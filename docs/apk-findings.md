@@ -32,6 +32,25 @@ The analogous charger provider invokes `SetVehicleChargerSettingsMutation`.
 The SoC key is also independently present in the existing community component:
 https://github.com/Elibart-home/tibber_soc_updater
 
+Further APK evidence: `vehicleStateSubscription($vehicleId: String!)` reads
+`vehicleState(vehicleId: $vehicleId)`. The `GetMyVehicles` query reads
+`me.myVehicles.vehicles`, whose `MyVehicle` fragment has `id`, `title` and
+`isPaired` (not a `name` field). The discovery module uses these subsets.
+
+Community protocol evidence for app login at `/v1/login.credentials`, JSON
+email/password, WebSocket `/v4/gql/ws`, Authorization bearer header and empty
+`connection_init` with `graphql-transport-ws`:
+https://github.com/DG65/NRGTibberGridRewards/blob/main/TibberGridReward/module.php
+These are protocol candidates, not live-verified account behavior. Offline
+tests cover framing, ping/pong, selected vehicle identity and error handling.
+
+`vehicle-departure-times` is used in `VehicleSettingViewModel.keyToTooltipContent`
+as a substring match for server setting/group identifiers. It is not established
+as the exact mutation key. REA 6.7.0/JADX successfully opened the APK; the attempted
+method `SmartChargingViewModel.onDepartureTimesSettingsWanted` does not exist as
+a standalone method in this optimized build. Its Kotlin label is insufficient
+evidence to invent a callable method or API.
+
 ## Remaining verification
 
 No exact departure write key/value encoding, weekday convention, timezone
