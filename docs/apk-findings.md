@@ -53,10 +53,37 @@ evidence to invent a callable method or API.
 
 ## Remaining verification
 
-No exact departure write key/value encoding, weekday convention, timezone
-semantics or pause/resume operation has yet been established. Server-provided
-settings and action definitions may be necessary. Do not invent these values.
-Nothing was sent to a live Tibber account during this investigation.
+### Departure encoding evidence (additional investigation)
+
+Authenticated HA discovery succeeded. For the user's offline Zoe, server settings
+include `offline.vehicle.departureTimes.<weekday>` for all seven English weekday
+names and `offline.vehicle.smartCharging.isEnabled` (boolean, true). The user set
+Friday 06:00 in the iPhone app; a fresh HA inspection returned Friday `06:00`.
+Other days return a localized display value (`No departure time`), while the
+structured charging fragment returns `time: null`. Do NOT send display text.
+
+REA/JADX analysis of this APK established:
+
+* `com.google.android.gms.dynamite.zzf.mapSettingToEditableSettingListItem` creates
+  a TimePickerItem using callback class ID 18 of
+  `com.tibber.graphs.ui.pager.GraphPageIndicatorKt$$ExternalSyntheticLambda1`.
+* That callback formats selected hour/minute as `%02d:%02d:00` with Locale.ROOT
+  and passes it to the setting-update callback.
+* The mapper's turn-off callback reaches
+  `BaseSettingsViewModel$$ExternalSyntheticLambda1` class ID 0, which creates
+  `EditedSetting(key, null)`.
+* `BaseSettingsViewModel.saveSetting()` passes that same `newValue` to
+  `getOnSettingsUpdate().invoke(key, newValue)` without display-text conversion.
+
+The library now encodes local minute-precision times as `HH:mm:00` and clear as
+JSON null using the existing SetVehicleSettings mutation. These writes still
+require live write/read-back verification. No account IDs or raw account replies
+are published here.
+
+Departure write key/encoding is now supported by the above static/live-read
+evidence. Home timezone and actual next-departure behavior, clear/write read-back
+and pause/resume still require live verification. Account login, vehicle listing
+and snapshots were read successfully through HA; no writes were made at this stage.
 
 ## Local analysis tools
 

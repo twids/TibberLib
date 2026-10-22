@@ -62,6 +62,32 @@ async def list_vehicles(http: httpx.AsyncClient, token: str) -> list[dict[str, A
         raise TibberError("Invalid vehicle listing response") from None
 
 
+async def list_homes(http: httpx.AsyncClient, token: str) -> list[dict[str, Any]]:
+    """APK GetHomes document subset (HomeItem id/title)."""
+    try:
+        response = await http.post(
+            "https://app.tibber.com/v4/gql",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"query": "query GetHomes { me { homes { id title } } }"},
+            timeout=20, follow_redirects=False,
+        )
+        if response.status_code != 200:
+            raise TibberError(f"Home listing HTTP status {response.status_code}")
+        data = response.json()
+        if data.get("errors"):
+            raise TibberError("Home listing GraphQL error")
+        homes = data["data"]["me"]["homes"]
+        if not isinstance(homes, list) or any(
+            not isinstance(h, dict) or not isinstance(h.get("id"), str) for h in homes
+        ):
+            raise TibberError("Invalid home list")
+        return homes
+    except httpx.HTTPError:
+        raise TibberError("Home listing request failed") from None
+    except (ValueError, TypeError, KeyError, AttributeError):
+        raise TibberError("Invalid home listing response") from None
+
+
 async def login(http: httpx.AsyncClient, email: str, password: str) -> str:
     """Get an app token. Caller must store/refresh credentials securely.
 

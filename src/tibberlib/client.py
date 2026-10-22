@@ -1,6 +1,8 @@
 """Only operations found in the app are enabled here."""
 
 from collections.abc import Awaitable, Callable
+from collections.abc import Mapping
+from datetime import time
 from typing import Any
 
 import httpx
@@ -41,6 +43,40 @@ class TibberClient:
             raise ValueError("vehicle_id and home_id must be nonempty")
         if type(battery_level) is not int or not 0 <= battery_level <= 100:
             raise ValueError("battery_level must be an integer between 0 and 100")
+        await self._set_settings(vehicle_id, home_id, [{
+            "key": "offline.vehicle.batteryLevel", "value": battery_level,
+        }])
+
+    async def set_departure_times(
+        self, *, vehicle_id: str, home_id: str,
+        departures: Mapping[str, time | None],
+    ) -> None:
+        """Set only specified weekdays. None removes a time, not smart charging.
+
+        Times are local wall-clock values, not UTC instants. The caller owns
+        timezone/date selection. APK time-picker code formats HH:mm:00 and its
+        turn-off path passes null through EditedSetting/saveSetting.
+        """
+        weekdays = {"monday", "tuesday", "wednesday", "thursday", "friday",
+                    "saturday", "sunday"}
+        if not vehicle_id.strip() or not home_id.strip() or not departures:
+            raise ValueError("Vehicle, home and at least one weekday are required")
+        settings = []
+        for day, departure in departures.items():
+            if day not in weekdays:
+                raise ValueError("Invalid weekday")
+            if departure is not None and (
+                not isinstance(departure, time) or departure.tzinfo is not None
+                or departure.second or departure.microsecond
+            ):
+                raise ValueError("Departure must be a local time with minute precision")
+            settings.append({
+                "key": f"offline.vehicle.departureTimes.{day}",
+                "value": departure.strftime("%H:%M:00") if departure is not None else None,
+            })
+        await self._set_settings(vehicle_id, home_id, settings)
+
+    async def _set_settings(self, vehicle_id: str, home_id: str, settings: list[dict]) -> None:
         token = await self._token_provider()
         if not token:
             raise TibberError("No app access token available")
@@ -56,10 +92,7 @@ class TibberClient:
                     "variables": {
                         "vehicleId": vehicle_id,
                         "homeId": home_id,
-                        "settings": [{
-                            "key": "offline.vehicle.batteryLevel",
-                            "value": battery_level,
-                        }],
+                        "settings": settings,
                     },
                 },
                 timeout=20,
