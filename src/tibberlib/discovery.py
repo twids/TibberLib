@@ -162,5 +162,19 @@ async def read_vehicle(token: str, vehicle_id: str) -> dict[str, Any]:
                     elif kind in {"error", "connection_error", "complete"}:
                         raise TibberError("Vehicle subscription ended without a snapshot")
                 raise TibberError("Vehicle subscription closed without a snapshot")
-    except (TimeoutError, OSError, WebSocketException, ValueError, TypeError):
-        raise TibberError("Vehicle discovery failed") from None
+    except TimeoutError:
+        raise TibberError("Vehicle snapshot timed out after 30 seconds") from None
+    except OSError:
+        raise TibberError("Vehicle snapshot network connection failed") from None
+    except WebSocketException as err:
+        # Codes are safe diagnostics. Never include server reasons/headers/bodies.
+        received = getattr(err, "rcvd", None)
+        code = getattr(received, "code", None)
+        response = getattr(err, "response", None)
+        status = getattr(response, "status_code", None)
+        detail = f" (close code {code})" if isinstance(code, int) else ""
+        if isinstance(status, int):
+            detail = f" (HTTP {status})"
+        raise TibberError(f"Vehicle snapshot WebSocket failed{detail}") from None
+    except (ValueError, TypeError):
+        raise TibberError("Vehicle snapshot response could not be decoded") from None

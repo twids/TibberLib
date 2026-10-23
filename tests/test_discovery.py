@@ -80,3 +80,17 @@ async def test_wrong_vehicle_is_rejected(monkeypatch):
     monkeypatch.setattr(discovery, "connect", lambda *a, **kw: Socket({"id": "other-car"}))
     with pytest.raises(TibberError, match="ID mismatch"):
         await discovery.read_vehicle("secret", "zoe")
+
+
+@pytest.mark.parametrize("error,expected", [
+    (TimeoutError("secret"), "timed out"),
+    (OSError("secret"), "network connection failed"),
+    (ValueError("secret"), "could not be decoded"),
+])
+async def test_snapshot_errors_are_specific_but_do_not_leak_details(monkeypatch, error, expected):
+    def connect(*args, **kwargs):
+        raise error
+    monkeypatch.setattr(discovery, "connect", connect)
+    with pytest.raises(TibberError, match=expected) as caught:
+        await discovery.read_vehicle("secret", "zoe")
+    assert "secret" not in str(caught.value)
