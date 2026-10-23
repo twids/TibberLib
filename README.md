@@ -10,10 +10,12 @@ GraphQL, HTTP and malformed-response errors propagate to the caller.
 Writes are not automatically retried and redirects are not followed.
 
 Experimental read-only discovery includes app login, vehicle listing and a first
-vehicle snapshot over GraphQL WebSocket. These protocols still require live
-account verification. Token refresh, departure-time writes, pause/resume and
-charger discovery are not implemented. HA setup lives in the separate TibberHA
-repository. No live account calls have been tested. A successful API response does not
+vehicle snapshot over GraphQL WebSocket. Login, discovery and authenticated reads
+have been verified through TibberHA. Departure writes and clearing are implemented
+using APK-verified time/null encoding and have passed live read-back checks.
+SoC writes have also passed a live read-back check. Token refresh is owned by HA;
+pause/resume is not implemented. HA setup lives in the separate TibberHA
+repository. A successful API response does not
 prove a charging plan changed or charging stopped.
 
 ```python
